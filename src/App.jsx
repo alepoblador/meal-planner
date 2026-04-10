@@ -1063,6 +1063,7 @@ export default function MealPlanner() {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("plan");
   const [owned, setOwned] = useState(new Set());
+  const [userPantry, setUserPantry] = useState(new Set()); // persistent pantry items
   const [enabledCuisines, setEnabledCuisines] = useState(new Set(ALL_CUISINES));
   const [includedItems, setIncludedItems] = useState(new Set()); // populated after generation
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -1094,6 +1095,7 @@ export default function MealPlanner() {
         if (cs) {
           const s = JSON.parse(cs.value);
           if (s.enabledCuisines) setEnabledCuisines(new Set(s.enabledCuisines));
+          if (s.userPantry) setUserPantry(new Set(s.userPantry));
         }
       } catch (e) {}
       try {
@@ -1133,10 +1135,13 @@ export default function MealPlanner() {
     window.storage
       .set(
         "asda_settings",
-        JSON.stringify({ enabledCuisines: [...enabledCuisines] }),
+        JSON.stringify({
+          enabledCuisines: [...enabledCuisines],
+          userPantry: [...userPantry],
+        }),
       )
       .catch(() => {});
-  }, [enabledCuisines]);
+  }, [enabledCuisines, userPantry]);
 
   // ── Fetch prices — 3 strategies with step-by-step diagnostics ───────────────
   const fetchPrices = async () => {
@@ -1262,12 +1267,7 @@ export default function MealPlanner() {
     try {
       const res = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": import.meta.env.VITE_ANTHROPIC_KEY,
-          "anthropic-version": "2023-06-01",
-          "anthropic-dangerous-direct-browser-access": "true",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "claude-haiku-4-5-20251001",
           max_tokens: 6000,
@@ -1327,6 +1327,13 @@ export default function MealPlanner() {
       n.has(product) ? n.delete(product) : n.add(product);
       return n;
     });
+  const togglePantry = (product) =>
+    setUserPantry((prev) => {
+      const n = new Set(prev);
+      n.has(product) ? n.delete(product) : n.add(product);
+      return n;
+    });
+
   const toggleIncluded = (id) =>
     setIncludedItems((prev) => {
       const n = new Set(prev);
@@ -1339,8 +1346,19 @@ export default function MealPlanner() {
   const getDessert = (id) => (plan?.desserts || []).find((d) => d.id === id);
 
   const shopTotal = () =>
-    (plan?.shoppingList || [])
-      .filter((i) => !owned.has(i.product))
+    buildFilteredShoppingList()
+      .filter((i) => !owned.has(i.product) && !userPantry.has(i.id))
+      .reduce((s, i) => {
+        const p = parseFloat(
+          (prices[i.product] || "0").replace(/[^0-9.]/g, ""),
+        );
+        return s + (isNaN(p) ? 0 : p);
+      }, 0)
+      .toFixed(2);
+
+  const pantryTotal = () =>
+    buildFilteredShoppingList()
+      .filter((i) => userPantry.has(i.id))
       .reduce((s, i) => {
         const p = parseFloat(
           (prices[i.product] || "0").replace(/[^0-9.]/g, ""),
@@ -2699,8 +2717,8 @@ export default function MealPlanner() {
                   >
                     <div>
                       {
-                        (plan.shoppingList || []).filter(
-                          (i) => !owned.has(i.product),
+                        buildFilteredShoppingList().filter(
+                          (i) => !owned.has(i.product) && !userPantry.has(i.id),
                         ).length
                       }{" "}
                       items to buy
@@ -2708,6 +2726,12 @@ export default function MealPlanner() {
                     {owned.size > 0 && (
                       <div style={{ marginTop: 4, color: "#A8D878" }}>
                         ✓ {owned.size} already at home
+                      </div>
+                    )}
+                    {userPantry.size > 0 && (
+                      <div style={{ marginTop: 4, color: "#A8D878" }}>
+                        🫙 {userPantry.size} in pantry (£{pantryTotal()}{" "}
+                        excluded)
                       </div>
                     )}
                   </div>
@@ -2972,11 +2996,17 @@ export default function MealPlanner() {
                     </div>
                     {items.map((item, i) => {
                       const have = owned.has(item.product);
+                      const isPantry = userPantry.has(item.id);
                       const price = prices[item.product];
+                      const rowBg = isPantry
+                        ? "#F0EDE8"
+                        : have
+                          ? "#F5FAF0"
+                          : "transparent";
+                      const rowOp = have || isPantry ? 0.5 : 1;
                       return (
                         <div
                           key={i}
-                          onClick={() => toggleOwned(item.product)}
                           style={{
                             display: "flex",
                             justifyContent: "space-between",
@@ -2984,19 +3014,21 @@ export default function MealPlanner() {
                             padding: "10px 8px",
                             borderBottom: "1px solid #F3EDE3",
                             fontSize: 13,
-                            cursor: "pointer",
                             borderRadius: 6,
-                            background: have ? "#F5FAF0" : "transparent",
-                            opacity: have ? 0.5 : 1,
+                            background: rowBg,
+                            opacity: rowOp,
                             transition: "all 0.15s",
                           }}
                         >
                           <div
+                            onClick={() => toggleOwned(item.product)}
                             style={{
                               display: "flex",
                               alignItems: "center",
                               gap: 10,
                               minWidth: 0,
+                              flex: 1,
+                              cursor: "pointer",
                             }}
                           >
                             <div
@@ -3022,7 +3054,11 @@ export default function MealPlanner() {
                             </div>
                             <span
                               style={{
-                                textDecoration: have ? "line-through" : "none",
+                                textDecoration: have
+                                  ? "line-through"
+                                  : isPantry
+                                    ? "line-through"
+                                    : "none",
                                 overflow: "hidden",
                                 textOverflow: "ellipsis",
                                 whiteSpace: "nowrap",
@@ -3040,17 +3076,52 @@ export default function MealPlanner() {
                               {item.qty}
                             </span>
                           </div>
-                          <span
+                          <div
                             style={{
-                              color: price ? (have ? TX2 : GA) : TX2,
-                              fontWeight: price ? 600 : 400,
-                              fontSize: 13,
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 8,
                               flexShrink: 0,
-                              marginLeft: 12,
+                              marginLeft: 8,
                             }}
                           >
-                            {price || (pricesFound > 0 ? "—" : "fetch prices")}
-                          </span>
+                            <span
+                              style={{
+                                color: price
+                                  ? have || isPantry
+                                    ? TX2
+                                    : GA
+                                  : TX2,
+                                fontWeight: price ? 600 : 400,
+                                fontSize: 13,
+                              }}
+                            >
+                              {price ||
+                                (pricesFound > 0 ? "—" : "fetch prices")}
+                            </span>
+                            <button
+                              onClick={() => togglePantry(item.id)}
+                              title={
+                                isPantry
+                                  ? "Remove from pantry"
+                                  : "Mark as pantry item (always in stock)"
+                              }
+                              style={{
+                                background: isPantry
+                                  ? "#C8A96E"
+                                  : "rgba(0,0,0,0.06)",
+                                border: "none",
+                                borderRadius: 6,
+                                padding: "3px 7px",
+                                cursor: "pointer",
+                                fontSize: 13,
+                                lineHeight: 1,
+                                transition: "background 0.15s",
+                              }}
+                            >
+                              🫙
+                            </button>
+                          </div>
                         </div>
                       );
                     })}
