@@ -48,7 +48,7 @@ BATCH COOKING RULES:
     Air Fryer → chicken breast, tempeh, tofu, seitan, fish fillets
     Instant Pot → turkey mince, chicken in sauce, legume+chicken combinations
     Stove → salmon, pan-seared fish, eggs, stir-fry style
-- A food processor is available for bulk chopping/blending — consolidate all chopping of onions, garlic, peppers, herbs across all three recipes into a single food processor step at the start
+- A Magimix food processor is available for bulk chopping/blending — consolidate all chopping of onions, garlic, peppers, herbs across all three recipes into a single food processor step at the start. Specify the Magimix attachment to use
 - Generate a top-level batchCookPlan with: total active minutes, shared prep steps (food processor first), and a time-sequenced step list covering all three recipes and the two sauces, finishing within 90 minutes
 - Remove sharedPrep from individual recipes — it belongs only in batchCookPlan
 
@@ -57,10 +57,10 @@ OTHER RULES:
 - 3 batch-cook recipes rotating across 4 lunches + 4 dinners
 - Each recipe has ONE fixed serve suggestion (same every time)
 - Only 2 snacks (s1,s2,s1,s2) and 2 desserts (d1,d2,d1,d2), no-cook
-- 2 food-processor sauces using pantry/herb/spice items
+- 2 food-processor sauces using pantry/herb/spice items, again specify Magimix attachment
 - Max 25min active cook, max 8 ingredients, max 6 steps (≤20 words each)
 - The 3 recipes MUST each use a DIFFERENT cuisine — assign exactly one of these: ${cuisines.join(", ")}
 - ALL ingredient amounts in grams for a 4-serving batch. Format: number+g only, max 800g per ingredient. Snack/dessert items need numeric grams per person. Weights: 1 egg=60g, 1 banana=120g, 1 avocado=160g, 1 can beans=240g drained
 
 Return ONLY valid JSON, no markdown, nothing outside the JSON object:
-{"batchCookPlan":{"totalActiveMinutes":0,"sharedPrepSteps":["Food processor: blitz onions and garlic for all recipes — 3 min"],"sequence":[{"time":"0:00","action":""},{"time":"0:15","action":""}]},"recipes":[{"id":"r1","name":"","cuisine":"","emoji":"","servings":4,"activeMinutes":0,"totalMinutes":0,"equipment":"","serve":"","ingredients":[{"id":"","name":"","amount":""}],"steps":[{"n":1,"text":""}]}],"sauces":[{"id":"sc1","name":"","emoji":"","description":"","ingredients":[{"id":"","name":""}],"steps":["string"],"stores":""}],"snacks":[{"id":"s1","name":"","items":[{"id":"","name":"","grams":0}],}],"desserts":[{"id":"d1","name":"","items":[{"id":"","name":"","grams":0}]}],"mealPlan":[{"day":1,"lunch":{"recipeId":"r1"},"dinner":{"recipeId":"r2"},"snackId":"s1","dessertId":"d1"}],"summary":{"note":""}}`;
+{"batchCookPlan":{"totalActiveMinutes":0,"sharedPrepSteps":["Food processor: chop onions and garlic for all recipes — 3 min"],"sequence":[{"time":"0:00","action":""},{"time":"0:15","action":""}]},"recipes":[{"id":"r1","name":"","cuisine":"","emoji":"","servings":4,"activeMinutes":0,"totalMinutes":0,"equipment":"","serve":"","ingredients":[{"id":"","name":"","amount":""}],"steps":[{"n":1,"text":""}]}],"sauces":[{"id":"sc1","name":"","emoji":"","description":"","ingredients":[{"id":"","name":""}],"steps":["string"],"stores":""}],"snacks":[{"id":"s1","name":"","items":[{"id":"","name":"","grams":0}],}],"desserts":[{"id":"d1","name":"","items":[{"id":"","name":"","grams":0}]}],"mealPlan":[{"day":1,"lunch":{"recipeId":"r1"},"dinner":{"recipeId":"r2"},"snackId":"s1","dessertId":"d1"}],"summary":{"note":""}}`;

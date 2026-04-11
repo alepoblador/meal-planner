@@ -2569,7 +2569,7 @@ export default function MealPlanner() {
                                 border: `1px solid ${BD}`,
                               }}
                             >
-                              {str(ing.name || ing)}
+                              {str(ing.name || ing)}{ing.amount ? ` — ${ing.amount}` : ""}
                             </span>
                           ))}
                         </div>
